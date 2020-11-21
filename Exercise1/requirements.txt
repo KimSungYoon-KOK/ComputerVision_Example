@@ -1,0 +1,6 @@
+numpy
+matplotlib
+scikit-image
+scipy
+opencv-python==3.4.2.16
+opencv-contrib-python==3.4.2.16
