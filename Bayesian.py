@@ -119,6 +119,34 @@ for idx, texture_name in enumerate(classes):
 
 X_test = np.array(X_test)
 Y_test = np.array(Y_test)
+print('test data: ', X_test.shape)
+print('test label: ', Y_test.shape)
+
+
+
+# ========== Bayesian classifier ==========
+priors = []
+covariances = []
+means = []
+
+for i in range(len(classes)):
+    x = X_train[Y_train == i]
+    priors.append((len(x) / len(X_train)))
+    means.append(np.mean(x, axis=0))
+    covariances.append(np.cov(np.transpose(x), bias=True))
+
+# ========== likelihood 계산 함수 ===========
+def likelihood(x, prior, mean, cov):
+    return -0.5*np.linalg.multi_dot([np.transpose(x-mean), np.linalg.inv(cov), (x-mean)]) - 0.5 * np.log(np.linalg.det(cov)) + np.log(prior)
+
+Y_pred = []
+for i in range(len(X_test)):
+    likelihoods = []
+    for j in range(len(classes)):
+        likelihoods.append(likelihood(X_test[i], priors[j], means[j], covariances[j]))
+    Y_pred.append(likelihoods.index(max(likelihoods)))
+acc = accuracy_score(Y_test, Y_pred)
+print('accuracy: ', acc)
 
 
     
