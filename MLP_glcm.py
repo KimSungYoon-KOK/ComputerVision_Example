@@ -90,7 +90,7 @@ Y_test = []
 
 for idx, texture_name in enumerate(classes):
     image_dir = os.path.join(test_dir, texture_name)
-    for image_name in os.listdir(image_dir)
+    for image_name in os.listdir(image_dir):
         image = cv2.imread(os.path.join(image_dir, image_name))
         image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         glcm = greycomatrix(image_p_gray, distances=[1], angles=[0], levels=256, symmetric=False, normed=True)
