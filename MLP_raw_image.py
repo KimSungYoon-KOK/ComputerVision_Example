@@ -5,7 +5,7 @@ import os
 
 # ================= 이미지 패치에서 특징 추출 =======================
 train_dir = './texture_data/train'
-test_dir = './textire_data/test'
+test_dir = './texture_data/test'
 classes = ['brick', 'grass', 'ground']
 
 X_train = []
@@ -28,7 +28,7 @@ for idx, texture_name in enumerate(classes):
            X_train.append(image_p)
            Y_train.append(idx)
 
-X_train = np.array(X_train)/128 - 1
+X_train = np.array(X_train)/128 - 1             # 0~255의 값을 -1 ~ 1의 값으로 정규화
 Y_train = np.array(Y_train)
 print('train data: ', X_train.shape)
 print('train label: ', Y_train.shape)
@@ -76,7 +76,7 @@ class Dataset(Dataset):
         return sample
 
 # === 신경망 모델 클래스 ===
-class MLP(nn.module):
+class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dim1,hidden_dim2, output_dim):
         super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim1)

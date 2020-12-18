@@ -54,7 +54,7 @@ def laws_texture(gray_image):
 
 # ================= 이미지 패치에서 특징 추출 =======================
 train_dir = './texture_data/train'
-test_dir = './textire_data/test'
+test_dir = './texture_data/test'
 classes = ['brick', 'grass', 'ground']
 
 X_train = []
@@ -131,7 +131,7 @@ class textureDataset(Dataset):
         return sample
 
 # === 신경망 모델 클래스 ===
-class MLP(nn.module):
+class MLP(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim):
         super(MLP, self).__init__()
         self.fc1 = nn.Linear(input_dim, hidden_dim)
@@ -163,7 +163,7 @@ Test_data = textureDataset(features=X_test, labels=Y_test)
 Trainloader = DataLoader(Train_data, batch_size=batch_size, shuffle=True)
 Testloader = DataLoader(Test_data, batch_size=batch_size)
 
-net = MLP(11, 8, 3)
+net = MLP(11, 8, 3)     #Dimension: input = 11(feature 수), hidden = 8, output = 3 (class 수)
 net.to(device)
 summary(net, (11,), device='cuda' if torch.cuda.is_available() else 'cpu')
 

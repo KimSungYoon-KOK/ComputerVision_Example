@@ -67,10 +67,7 @@ classes  = ['brick', 'grass', 'ground', 'water', 'wood']
 X_train = []
 Y_train = []
 
-PATCH_SIZE = 32     # 16 or 32
-GLCM_I = 1
-GLCM_J = 0
-
+PATCH_SIZE = 30
 np.random.seed(1234)
 for idx, texture_name in enumerate(classes):
     img_dir = os.path.join(train_dir, texture_name)
@@ -88,7 +85,7 @@ for idx, texture_name in enumerate(classes):
             img_p_gray = cv2.cvtColor(img_p, cv2.COLOR_BGR2GRAY)
             #img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             
-            glcm = greycomatrix(img_p_gray, distances=[GLCM_I], angles=[GLCM_J], levels=256, symmetric=False, normed=True)
+            glcm = greycomatrix(img_p_gray, distances=[1], angles=[0], levels=256, symmetric=False, normed=True)
             #dissimilarity = round(greycoprops(glcm, 'dissimilarity')[0, 0], 4)
             #correlation = round(greycoprops(glcm, 'correlation')[0, 0], 4)
             X_train.append([greycoprops(glcm, 'dissimilarity')[0, 0],
@@ -109,13 +106,12 @@ for idx, texture_name in enumerate(classes):
     for img_name in os.listdir(img_dir):
         img = cv2.imread(os.path.join(img_dir, img_name))
         img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        glcm = greycomatrix(img_gray, distances=[GLCM_I], angles=[GLCM_J], levels=256, symmetric=False, normed=True)
+        glcm = greycomatrix(img_gray, distances=[1], angles=[0], levels=256, symmetric=False, normed=True)
 
         X_test.append([greycoprops(glcm, 'dissimilarity')[0, 0],
                             greycoprops(glcm, 'correlation')[0, 0]] + 
                             laws_texture(img_p_gray))
         Y_test.append(idx)
-        #print(img_name, '  ', X_test[-1])
 
 X_test = np.array(X_test)
 Y_test = np.array(Y_test)

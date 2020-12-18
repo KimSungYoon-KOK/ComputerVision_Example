@@ -5,7 +5,7 @@ import os
 
 # ================= 이미지 패치에서 특징 추출 =======================
 train_dir = './texture_data/train'
-test_dir = './textire_data/test'
+test_dir = './texture_data/test'
 classes = ['brick', 'grass', 'ground']
 
 X_train = []
@@ -29,6 +29,7 @@ for idx, texture_name in enumerate(classes):
            Y_train.append(idx)
 
 X_train = np.array(X_train)/128 - 1
+X_train = np.swapaxes(X_train, 1, 3)            # (Batch Size, input channel 개수, H, W)
 Y_train = np.array(Y_train)
 print('train data: ', X_train.shape)
 print('train label: ', Y_train.shape)
@@ -44,6 +45,7 @@ for idx, texture_name in enumerate(classes):
         Y_test.append(idx)
 
 X_test = np.array(X_test)/128 - 1
+X_test = np.swapaxes(X_test, 1, 3)
 Y_test = np.array(Y_test)
 print('test data: ', X_test.shape)
 print('test label: ', Y_test.shape)
@@ -76,7 +78,7 @@ class Dataset(Dataset):
         return sample
 
 # === 신경망 모델 클래스 ===
-class CNN(nn.module):
+class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=10, kernel_size=3)
@@ -111,8 +113,8 @@ batch_size = 10
 learning_rate = 0.001
 n_epoch = 100
 
-Train_data = Dataset(features=X_train, labels=Y_train)
-Test_data = Dataset(features=X_test, labels=Y_test)
+Train_data = Dataset(images=X_train, labels=Y_train)
+Test_data = Dataset(images=X_test, labels=Y_test)
 
 Trainloader = DataLoader(Train_data, batch_size=batch_size, shuffle=True)
 Testloader = DataLoader(Test_data, batch_size=batch_size)
