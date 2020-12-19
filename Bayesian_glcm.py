@@ -64,18 +64,25 @@ classes  = ['buildings', 'forest', 'mountain', 'sea']
 X_train = []
 Y_train = []
 
-PATCH_SIZE = 30
+PATCH_SIZE = 32
+DISTANCE = 8
+ANGLE = 0
 np.random.seed(1234)
+
+print("Train Data에서 특징 추출")
 for idx, texture_name in enumerate(classes):
     image_dir = os.path.join(train_dir, texture_name)
 
-    #이미지 불러와서 100X100으로 축소
+    # 이미지 불러와서 100X100으로 축소
+    i = 0
     for image_name in os.listdir(image_dir):
         image = cv2.imread(os.path.join(image_dir, image_name))
         image_s = cv2.resize(image, (100,100), interpolation=cv2.INTER_LINEAR)
+        i += 1
+        print(f'9248/{(idx+1)*i}\r', end="")
 
         # 이미지에서 랜덤으로 10개의 패치를 잘라서 특징 추출
-        for _ in range(10):
+        for j in range(10):
             h = np.random.randint(100-PATCH_SIZE)
             w = np.random.randint(100-PATCH_SIZE)
 
@@ -83,7 +90,7 @@ for idx, texture_name in enumerate(classes):
             img_p_gray = cv2.cvtColor(img_p, cv2.COLOR_BGR2GRAY)        # 흑백 이미지로 변환
             #img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             
-            glcm = greycomatrix(img_p_gray, distances=[1], angles=[0], levels=256, symmetric=False, normed=True)
+            glcm = greycomatrix(img_p_gray, distances=[DISTANCE], angles=[ANGLE], levels=256, symmetric=False, normed=True)
             X_train.append([greycoprops(glcm, 'dissimilarity')[0, 0],
                             greycoprops(glcm, 'correlation')[0, 0] ] +
                             laws_texture(img_p_gray))
@@ -91,30 +98,35 @@ for idx, texture_name in enumerate(classes):
             
 X_train = np.array(X_train)
 Y_train = np.array(Y_train)
-print('train data: ', X_train.shape)        # (300,11)  3개의 클래스를 사용하고 각 클래스당 100개의 이미지 패치가 있기 때문에  
-print('train label: ', Y_train.shape)       # (300)
+print('train data: ', X_train.shape)        # (92480, 11)  3개의 클래스를 사용하고 각 클래스당 100개의 이미지 패치가 있기 때문에  
+print('train label: ', Y_train.shape)       # (92480)
 
 
 # ========== Test 이미지에서 특징 추출 ==========
 X_test = []
 Y_test = []
 
+print("Test Data에서 특징 추출")
 for idx, texture_name in enumerate(classes):
     image_dir = os.path.join(test_dir, texture_name)
+
+    i = 0
     for image_name in os.listdir(image_dir):
         image = cv2.imread(os.path.join(image_dir, image_name))
         image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)                    # 흑백 이미지로 변환
 
-        glcm = greycomatrix(image_gray, distances=[1], angles=[0], levels=256, symmetric=False, normed=True)
+        glcm = greycomatrix(image_gray, distances=[DISTANCE], angles=[ANGLE], levels=256, symmetric=False, normed=True)
         X_test.append([greycoprops(glcm, 'dissimilarity')[0, 0],
                             greycoprops(glcm, 'correlation')[0, 0]] + 
                             laws_texture(image_gray))
         Y_test.append(idx)
+        i += 1
+        print(f'1946/{(idx+1)*i}\r', end="")
 
 X_test = np.array(X_test)
 Y_test = np.array(Y_test)
-print('test data: ', X_test.shape)          # (150,11)
-print('test label: ', Y_test.shape)         # (150,)
+print('test data: ', X_test.shape)          # (1946, 11)
+print('test label: ', Y_test.shape)         # (1946,)
 
 
 
@@ -123,11 +135,11 @@ priors = []
 covariances = []
 means = []
 
-for i in range(len(classes)):                               # 각 클래스마다
-    X = X_train[Y_train == i]                               # i번째 클래스 데이터를 X에 저장
-    priors.append((len(X) / len(X_train)))                  # priors에 사전 확률 저장
-    means.append(np.mean(X, axis=0))                        # mean에 평균값 저장
-    covariances.append(np.cov(np.transpose(X), bias=True))  # covariances에 공분산 저장
+for i in range(len(classes)):                                   # 각 클래스마다
+    X = X_train[Y_train == i]                                   # i번째 클래스 데이터를 X에 저장
+    priors.append((len(X) / len(X_train)))                      # priors에 사전 확률 저장
+    means.append(np.mean(X, axis=0))                            # mean에 평균값 저장
+    covariances.append(np.cov(np.transpose(X), bias=True))      # covariances에 공분산 저장
 
 # ========== likelihood 계산 함수 ==========
 def likelihood(x, prior, mean, cov):
@@ -139,7 +151,9 @@ for i in range(len(X_test)):                                    # 각 테스트 
     for j in range(len(classes)):                               # 모든 클래스의 likelihood 저장
         likelihoods.append(likelihood(X_test[i], priors[j], means[j], covariances[j]))
     Y_pred.append(likelihoods.index(max(likelihoods)))          # 가장 큰 likelihood를 채택
-acc = accuracy_score(Y_test, Y_pred)                            # 정확도 계산
+
+# 정확도 계산
+acc = accuracy_score(Y_test, Y_pred)                           
 print('accuracy: ', acc)
 
 
@@ -161,9 +175,7 @@ def plot_confusion_matrix(cm, target_names=None, labels=True):
 
         if labels:
             for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
-                plt.text(j, i, "{:,}".format(cm[i,j]),
-                horizontalalignment="center",
-                color="white" if  cm[i,j] > thresh else "black")
+                plt.text(j, i, "{:,}".format(cm[i,j]), horizontalalignment="center", color="white" if  cm[i,j] > thresh else "black")
         
         plt.tight_layout()
         plt.ylabel('True label')
