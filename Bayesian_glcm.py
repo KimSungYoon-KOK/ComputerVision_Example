@@ -11,31 +11,29 @@ import os
 # ========== laws texture 계산 함수 ==========
 def laws_texture(gray_image):
     (rows, cols) = gray_image.shape[:2]
-    smooth_kernel = (1 / 25) * np.ones((5, 5))
+    smooth_kernel = (1/25) * np.ones((5, 5))
     gray_smooth = sg.convolve(gray_image, smooth_kernel, "same")
     gray_processed = np.abs(gray_image - gray_smooth)
 
     # Law's Texture filter
-    filter_vectors = np.array(
-        [
+    filter_vectors = np.array([
             [1, 4, 6, 4, 1],        # L5
             [-1, -2, 0, 2, 1],      # E5
             [-1, 0, 2, 0, 1],       # S5
             [1, -4, 6, -4, 1],      # R5
-        ]
-    )
+        ])                          # 16(4X4)개 filter를 저장할 filters
 
     filters = []
     for i in range(4):
         for j in range(4):
             filters.append(
-                np.matmul(filter_vectors[i][:].reshape(5, 1), filter_vectors[j][:].reshape(1, 5))
+                np.matmul(filter_vectors[i][:].reshape(5,1), filter_vectors[j][:].reshape(1,5))
             )
 
     # Convolution 연산 및 convmap 조합
     conv_maps = np.zeros((rows, cols, 16))
     for i in range(len(filters)):
-        conv_maps[:, :, i] = sg.convolve(gray_processed, filters[i], "same")
+        conv_maps[:, :, i] = sg.convolve(gray_processed, filters[i], 'same')
 
     # 9+1개 중요한 texture map 계산
     texture_maps = list()
@@ -50,19 +48,18 @@ def laws_texture(gray_image):
     texture_maps.append(conv_maps[:, :, 15])                                # R5R5
     texture_maps.append(conv_maps[:, :, 0])                                 # L5L5 (use to norm TEM)
 
-    # Law's texture energy 계산
+    # Law's texture energy 계산: TEM 계산해서 L5L5로 정규화
     TEM = list()
     for i in range(9):
-        #tem = round(np.abs(texture_maps[i]).sum() / np.abs(texture_maps[9]).sum(), 4)
         TEM.append(np.abs(texture_maps[i]).sum() / np.abs(texture_maps[9]).sum())
     return TEM
 
 
 
 # ========== 이미지 패치에서 특징 추출 ==========
-train_dir = './texture_data/train'
-test_dir = './texture_data/test'
-classes  = ['brick', 'grass', 'ground', 'water', 'wood']
+train_dir = './archive/seg_train'
+test_dir = './archive/seg_test'
+classes  = ['buildings', 'forest', 'mountain', 'sea']
 
 X_train = []
 Y_train = []
@@ -70,53 +67,54 @@ Y_train = []
 PATCH_SIZE = 30
 np.random.seed(1234)
 for idx, texture_name in enumerate(classes):
-    img_dir = os.path.join(train_dir, texture_name)
-    for img_name in os.listdir(img_dir):
-        img = cv2.imread(os.path.join(img_dir, img_name))
-        img_s = cv2.resize(img, (100,100), interpolation=cv2.INTER_LINEAR)
+    image_dir = os.path.join(train_dir, texture_name)
 
-        
-        #print(img_name)
-        for i in range(10):
+    #이미지 불러와서 100X100으로 축소
+    for image_name in os.listdir(image_dir):
+        image = cv2.imread(os.path.join(image_dir, image_name))
+        image_s = cv2.resize(image, (100,100), interpolation=cv2.INTER_LINEAR)
+
+        # 이미지에서 랜덤으로 10개의 패치를 잘라서 특징 추출
+        for _ in range(10):
             h = np.random.randint(100-PATCH_SIZE)
             w = np.random.randint(100-PATCH_SIZE)
 
-            img_p = img_s[h:h+PATCH_SIZE, w:w+PATCH_SIZE]
-            img_p_gray = cv2.cvtColor(img_p, cv2.COLOR_BGR2GRAY)
+            img_p = image_s[h:h+PATCH_SIZE, w:w+PATCH_SIZE]             # 패치 사이즈 만큼 이미지 크롭
+            img_p_gray = cv2.cvtColor(img_p, cv2.COLOR_BGR2GRAY)        # 흑백 이미지로 변환
             #img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             
             glcm = greycomatrix(img_p_gray, distances=[1], angles=[0], levels=256, symmetric=False, normed=True)
-            #dissimilarity = round(greycoprops(glcm, 'dissimilarity')[0, 0], 4)
-            #correlation = round(greycoprops(glcm, 'correlation')[0, 0], 4)
             X_train.append([greycoprops(glcm, 'dissimilarity')[0, 0],
-                            greycoprops(glcm, 'correlation')[0, 0] ] + 
+                            greycoprops(glcm, 'correlation')[0, 0] ] +
                             laws_texture(img_p_gray))
             Y_train.append(idx)
-            #print('Crop ', i+1, ':  ', X_train[-1])
             
 X_train = np.array(X_train)
 Y_train = np.array(Y_train)
+print('train data: ', X_train.shape)        # (300,11)  3개의 클래스를 사용하고 각 클래스당 100개의 이미지 패치가 있기 때문에  
+print('train label: ', Y_train.shape)       # (300)
+
 
 # ========== Test 이미지에서 특징 추출 ==========
 X_test = []
 Y_test = []
 
 for idx, texture_name in enumerate(classes):
-    img_dir = os.path.join(test_dir, texture_name)
-    for img_name in os.listdir(img_dir):
-        img = cv2.imread(os.path.join(img_dir, img_name))
-        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        glcm = greycomatrix(img_gray, distances=[1], angles=[0], levels=256, symmetric=False, normed=True)
+    image_dir = os.path.join(test_dir, texture_name)
+    for image_name in os.listdir(image_dir):
+        image = cv2.imread(os.path.join(image_dir, image_name))
+        image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)                    # 흑백 이미지로 변환
 
+        glcm = greycomatrix(image_gray, distances=[1], angles=[0], levels=256, symmetric=False, normed=True)
         X_test.append([greycoprops(glcm, 'dissimilarity')[0, 0],
                             greycoprops(glcm, 'correlation')[0, 0]] + 
-                            laws_texture(img_p_gray))
+                            laws_texture(image_gray))
         Y_test.append(idx)
 
 X_test = np.array(X_test)
 Y_test = np.array(Y_test)
-print('test data: ', X_test.shape)
-print('test label: ', Y_test.shape)
+print('test data: ', X_test.shape)          # (150,11)
+print('test label: ', Y_test.shape)         # (150,)
 
 
 
@@ -125,27 +123,27 @@ priors = []
 covariances = []
 means = []
 
-for i in range(len(classes)):
-    x = X_train[Y_train == i]
-    priors.append((len(x) / len(X_train)))
-    means.append(np.mean(x, axis=0))
-    covariances.append(np.cov(np.transpose(x), bias=True))
+for i in range(len(classes)):                               # 각 클래스마다
+    X = X_train[Y_train == i]                               # i번째 클래스 데이터를 X에 저장
+    priors.append((len(X) / len(X_train)))                  # priors에 사전 확률 저장
+    means.append(np.mean(X, axis=0))                        # mean에 평균값 저장
+    covariances.append(np.cov(np.transpose(X), bias=True))  # covariances에 공분산 저장
 
-# ========== likelihood 계산 함수 ===========
+# ========== likelihood 계산 함수 ==========
 def likelihood(x, prior, mean, cov):
-    return -0.5*np.linalg.multi_dot([np.transpose(x-mean), np.linalg.inv(cov), (x-mean)]) - 0.5 * np.log(np.linalg.det(cov)) + np.log(prior)
+    return -0.5 * np.linalg.multi_dot([np.transpose(x-mean), np.linalg.inv(cov), (x-mean)]) - 0.5 * np.log(np.linalg.det(cov)) + np.log(prior)
 
-Y_pred = []
-for i in range(len(X_test)):
-    likelihoods = []
-    for j in range(len(classes)):
+Y_pred = []                                                     # 예측 데이터 저장 list
+for i in range(len(X_test)):                                    # 각 테스트 데이터에 대해
+    likelihoods = []                   
+    for j in range(len(classes)):                               # 모든 클래스의 likelihood 저장
         likelihoods.append(likelihood(X_test[i], priors[j], means[j], covariances[j]))
-    Y_pred.append(likelihoods.index(max(likelihoods)))
-acc = accuracy_score(Y_test, Y_pred)
+    Y_pred.append(likelihoods.index(max(likelihoods)))          # 가장 큰 likelihood를 채택
+acc = accuracy_score(Y_test, Y_pred)                            # 정확도 계산
 print('accuracy: ', acc)
 
 
-# === confusion matrix 시각화 ===
+# ========== confusion matrix 시각화 ==========
 def plot_confusion_matrix(cm, target_names=None, labels=True):
     accuracy = np.trace(cm) / float(np.sum(cm))
 
@@ -172,7 +170,5 @@ def plot_confusion_matrix(cm, target_names=None, labels=True):
         plt.xlabel('Predicted label')
         plt.show()
 
+# confusion matrix 시각화
 plot_confusion_matrix(confusion_matrix(Y_test, Y_pred), target_names=classes)
-
-
-    
