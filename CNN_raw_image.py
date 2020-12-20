@@ -3,30 +3,30 @@ import numpy as np
 import cv2
 import os
 
+# === 신경망에 필요한 모듈 ===
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from torch.utils.data.dataset import Dataset
+from torchsummary import summary
+
 # ================= 이미지 패치에서 특징 추출 =======================
-train_dir = './texture_data/train'
-test_dir = './texture_data/test'
-classes = ['brick', 'grass', 'ground']
+train_dir = './archive/seg_train'
+test_dir = './archive/seg_test'
+classes  = ['buildings', 'forest', 'mountain', 'sea']
 
 X_train = []
 Y_train = []
 
-PATCH_SIZE = 32
 np.random.seed(1234)
 for idx, texture_name in enumerate(classes):
    image_dir = os.path.join(train_dir, texture_name)
    for image_name in os.listdir(image_dir):
        image = cv2.imread(os.path.join(image_dir, image_name))
-       image_s = cv2.resize(image, (100, 100), interpolation=cv2.INTER_LINEAR)
-
-       for _ in range(10):
-           h = np.random.randint(100-PATCH_SIZE)
-           w = np.random.randint(100-PATCH_SIZE)
-
-           image_p = image_s[h:h+PATCH_SIZE, w:w+PATCH_SIZE]
-
-           X_train.append(image_p)
-           Y_train.append(idx)
+       image_s = cv2.resize(image, (32, 32), interpolation=cv2.INTER_LINEAR)
+       X_train.append(image_s)
+       Y_train.append(idx)
 
 X_train = np.array(X_train)/128 - 1
 X_train = np.swapaxes(X_train, 1, 3)            # (Batch Size, input channel 개수, H, W)
@@ -41,7 +41,8 @@ for idx, texture_name in enumerate(classes):
     image_dir = os.path.join(test_dir, texture_name)
     for image_name in os.listdir(image_dir):
         image = cv2.imread(os.path.join(image_dir, image_name))
-        X_test.append(image)
+        image_s = cv2.resize(image, (32, 32), interpolation=cv2.INTER_LINEAR)
+        X_test.append(image_s)
         Y_test.append(idx)
 
 X_test = np.array(X_test)/128 - 1
@@ -49,15 +50,6 @@ X_test = np.swapaxes(X_test, 1, 3)
 Y_test = np.array(Y_test)
 print('test data: ', X_test.shape)
 print('test label: ', Y_test.shape)
-
-
-# === 신경망에 필요한 모듈 ===
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from torch.utils.data.dataset import Dataset
-from torchsummary import summary
 
 # ================= 데이터셋 클래스 ======================
 class Dataset(Dataset):
@@ -83,11 +75,11 @@ class CNN(nn.Module):
         super(CNN, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=10, kernel_size=3)
         self.conv2 = nn.Conv2d(in_channels=10, out_channels=10, kernel_size=3)
-        self.ploo1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
         self.conv3 = nn.Conv2d(in_channels=10, out_channels=10, kernel_size=3)
         self.conv4 = nn.Conv2d(in_channels=10, out_channels=3, kernel_size=3)
-        self.pool2 = nn.AdaptiveMaxPool2d(output_size=3)
-        self.fc1 = nn.Linear(27, 3)
+        self.pool2 = nn.AdaptiveMaxPool2d(output_size=4)
+        self.fc1 = nn.Linear(48, 4)
         self.relu = nn.ReLU6()
 
     def forward(self, x):
@@ -180,8 +172,8 @@ for epoch in range(n_epoch):
         test_losses.append(test_loss)
         test_accs.append(test_acc)
 
-        print('[%d, %3d]\tloss: %.4f\tAccuracy : %.4f\t\tval-loss: %.4f\tval-Accuracy: %.4f' %
-                (epoch+1, n_epoch, train_loss, train_acc, test_loss, test_acc))
+        print('[%3d/%d]\tloss: %.4f\tAccuracy : %.4f\t\tval-loss: %.4f\tval-Accuracy: %.4f' %
+                (n_epoch, epoch+1, train_loss, train_acc, test_loss, test_acc))
 
 
 # ===== 학습/테스트 loss/정확도 시각화 =====
