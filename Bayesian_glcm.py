@@ -65,7 +65,7 @@ X_train = []
 Y_train = []
 
 PATCH_SIZE = 32
-DISTANCE = 8
+DISTANCE = 9
 ANGLE = 0
 np.random.seed(1234)
 

@@ -4,9 +4,9 @@ import cv2
 import os
 
 # ================= 이미지 패치에서 특징 추출 =======================
-train_dir = './texture_data/train'
-test_dir = './texture_data/test'
-classes = ['brick', 'grass', 'ground']
+train_dir = './archive/seg_train'
+test_dir = './archive/seg_test'
+classes  = ['buildings', 'forest', 'mountain', 'sea']
 
 X_train = []
 Y_train = []
@@ -30,8 +30,8 @@ for idx, texture_name in enumerate(classes):
 
 X_train = np.array(X_train)/128 - 1             # 0~255의 값을 -1 ~ 1의 값으로 정규화
 Y_train = np.array(Y_train)
-print('train data: ', X_train.shape)
-print('train label: ', Y_train.shape)
+print('train data: ', X_train.shape)            # (92480, 32, 32, 3)
+print('train label: ', Y_train.shape)           # (92480,)
 
 X_test = []
 Y_test = []
@@ -40,13 +40,17 @@ for idx, texture_name in enumerate(classes):
     image_dir = os.path.join(test_dir, texture_name)
     for image_name in os.listdir(image_dir):
         image = cv2.imread(os.path.join(image_dir, image_name))
+        w, h, _ = image.shape
+        if w != 150 or h != 150:
+            image = cv2.resize(image, (150, 150), interpolation=cv2.INTER_LINEAR)
+            print(f'resize: {image_dir}/{image_name}\r')
         X_test.append(image)
         Y_test.append(idx)
 
 X_test = np.array(X_test)/128 - 1
 Y_test = np.array(Y_test)
-print('test data: ', X_test.shape)
-print('test label: ', Y_test.shape)
+print('test data: ', X_test.shape)          # (1946, 32, 32, 3)
+print('test label: ', Y_test.shape)         # (1946,)
 
 
 # === 신경망에 필요한 모듈 ===
@@ -110,13 +114,13 @@ batch_size = 10
 learning_rate = 0.001
 n_epoch = 100
 
-Train_data = Dataset(features=X_train, labels=Y_train)
-Test_data = Dataset(features=X_test, labels=Y_test)
+Train_data = Dataset(images=X_train, labels=Y_train)
+Test_data = Dataset(images=X_test, labels=Y_test)
 
 Trainloader = DataLoader(Train_data, batch_size=batch_size, shuffle=True)
 Testloader = DataLoader(Test_data, batch_size=batch_size)
 
-net = MLP(32*32*3, 1024, 128, 3)
+net = MLP(32*32*3, 1024, 128, 4)        # 4 = class 수
 net.to(device)
 summary(net, (32, 32, 3), device='cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -133,7 +137,6 @@ test_accs = []
 for epoch in range(n_epoch):
     train_loss = 0.0
     evaluation = []
-    net.train()
     for i, data in enumerate(Trainloader, 0):
         features, labels = data
         labels = labels.long().to(device)
@@ -178,8 +181,8 @@ for epoch in range(n_epoch):
         test_losses.append(test_loss)
         test_accs.append(test_acc)
 
-        print('[%d, %3d]\tloss: %.4f\tAccuracy : %.4f\t\tval-loss: %.4f\tval-Accuracy: %.4f' %
-                (epoch+1, n_epoch, train_loss, train_acc, test_loss, test_acc))
+        print('[%3d/%d]\tloss: %.4f\tAccuracy : %.4f\t\tval-loss: %.4f\tval-Accuracy: %.4f' %
+                (n_epoch, epoch+1, train_loss, train_acc, test_loss, test_acc))
 
 
 
