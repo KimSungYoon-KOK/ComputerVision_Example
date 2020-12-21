@@ -4,6 +4,13 @@ from scipy import signal as sg
 import numpy as np
 import cv2
 import os
+# === 신경망에 필요한 모듈 ===
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
+from torch.utils.data.dataset import Dataset
+from torchsummary import summary
 
 # === laws texture 계산 함수 ===
 def laws_texture(gray_image):
@@ -62,22 +69,25 @@ Y_train = []
 
 PATCH_SIZE = 32
 DISTANCE = 2
-ANGLE = 1
+ANGLE = 0
 np.random.seed(1234)
 
 print("Train Data에서 특징 추출")
 for idx, texture_name in enumerate(classes):
    image_dir = os.path.join(train_dir, texture_name)
 
-   for image_name in os.listdir(image_dir):
+   for i, image_name in enumerate(os.listdir(image_dir)):
        image = cv2.imread(os.path.join(image_dir, image_name))
-       image_s = cv2.resize(image, (100, 100), interpolation=cv2.INTER_LINEAR)
+       w, h, _ = image.shape
+       if w != 150 or h != 150:
+           image = cv2.resize(image, (150, 150), interpolation=cv2.INTER_LINEAR)
+       print(f'9248/{(idx+1)*(i+1)}\r', end="")
 
        for _ in range(10):
-           h = np.random.randint(100-PATCH_SIZE)
-           w = np.random.randint(100-PATCH_SIZE)
+           h = np.random.randint(150-PATCH_SIZE)
+           w = np.random.randint(150-PATCH_SIZE)
 
-           image_p = image_s[h:h+PATCH_SIZE, w:w+PATCH_SIZE]
+           image_p = image[h:h+PATCH_SIZE, w:w+PATCH_SIZE]
            image_p_gray = cv2.cvtColor(image_p, cv2.COLOR_BGR2GRAY)
            #image_hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
            glcm = greycomatrix(image_p_gray, distances=[DISTANCE], angles=[ANGLE], levels=256, symmetric=False, normed=True)
@@ -98,13 +108,18 @@ print("Test Data에서 특징 추출")
 for idx, texture_name in enumerate(classes):
     image_dir = os.path.join(test_dir, texture_name)
 
-    for image_name in os.listdir(image_dir):
+    for i, image_name in enumerate(os.listdir(image_dir)):
         image = cv2.imread(os.path.join(image_dir, image_name))
+        w, h, _ = image.shape
+        if w != 150 or h != 150:
+           image = cv2.resize(image, (150, 150), interpolation=cv2.INTER_LINEAR)
         image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        glcm = greycomatrix(image_p_gray, distances=[DISTANCE], angles=[ANGLE], levels=256, symmetric=False, normed=True)
+        
+        glcm = greycomatrix(image_gray, distances=[DISTANCE], angles=[ANGLE], levels=256, symmetric=False, normed=True)
         X_test.append([greycoprops(glcm, 'dissimilarity')[0, 0],
-                            greycoprops(glcm, 'correlation')[0, 0]] + laws_texture(image_p_gray))
+                            greycoprops(glcm, 'correlation')[0, 0]] + laws_texture(image_gray))
         Y_test.append(idx)
+        print(f'1946/{(idx+1)*(i+1)}\r', end="")
 
 X_test = np.array(X_test)
 Y_test = np.array(Y_test)
@@ -112,13 +127,6 @@ print('test data: ', X_test.shape)          # (1946, 11)
 print('test label: ', Y_test.shape)         # (1946,)
 
 
-# === 신경망에 필요한 모듈 ===
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader
-from torch.utils.data.dataset import Dataset
-from torchsummary import summary
 
 # === 데이터셋 클래스 ===
 class textureDataset(Dataset):

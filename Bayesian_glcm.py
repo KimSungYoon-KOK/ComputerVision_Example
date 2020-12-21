@@ -55,7 +55,6 @@ def laws_texture(gray_image):
     return TEM
 
 
-
 # ========== 이미지 패치에서 특징 추출 ==========
 train_dir = './archive/seg_train'
 test_dir = './archive/seg_test'
@@ -64,9 +63,9 @@ classes  = ['buildings', 'forest', 'mountain', 'sea']
 X_train = []
 Y_train = []
 
-PATCH_SIZE = 32
-DISTANCE = 9
-ANGLE = 0
+PATCH_SIZE = 16
+DISTANCE = 10
+ANGLE = 0           #np.pi/2   np.pi/4
 np.random.seed(1234)
 
 print("Train Data에서 특징 추출")
@@ -74,19 +73,20 @@ for idx, texture_name in enumerate(classes):
     image_dir = os.path.join(train_dir, texture_name)
 
     # 이미지 불러와서 100X100으로 축소
-    i = 0
-    for image_name in os.listdir(image_dir):
+    for i, image_name in enumerate(os.listdir(image_dir)):
         image = cv2.imread(os.path.join(image_dir, image_name))
-        image_s = cv2.resize(image, (100,100), interpolation=cv2.INTER_LINEAR)
-        i += 1
-        print(f'9248/{(idx+1)*i}\r', end="")
+        w, h, _ = image.shape
+        if w != 150 or h != 150:
+            image = cv2.resize(image, (150, 150), interpolation=cv2.INTER_LINEAR)
+        
+        print(f'9248/{(idx+1)*(i+1)}\r', end="")
 
         # 이미지에서 랜덤으로 10개의 패치를 잘라서 특징 추출
         for j in range(10):
-            h = np.random.randint(100-PATCH_SIZE)
-            w = np.random.randint(100-PATCH_SIZE)
+            h = np.random.randint(150-PATCH_SIZE)
+            w = np.random.randint(150-PATCH_SIZE)
 
-            img_p = image_s[h:h+PATCH_SIZE, w:w+PATCH_SIZE]             # 패치 사이즈 만큼 이미지 크롭
+            img_p = image[h:h+PATCH_SIZE, w:w+PATCH_SIZE]             # 패치 사이즈 만큼 이미지 크롭
             img_p_gray = cv2.cvtColor(img_p, cv2.COLOR_BGR2GRAY)        # 흑백 이미지로 변환
             #img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             
@@ -98,7 +98,7 @@ for idx, texture_name in enumerate(classes):
             
 X_train = np.array(X_train)
 Y_train = np.array(Y_train)
-print('train data: ', X_train.shape)        # (92480, 11)  3개의 클래스를 사용하고 각 클래스당 100개의 이미지 패치가 있기 때문에  
+print('train data: ', X_train.shape)        # (92480, 11)  
 print('train label: ', Y_train.shape)       # (92480)
 
 
@@ -110,9 +110,11 @@ print("Test Data에서 특징 추출")
 for idx, texture_name in enumerate(classes):
     image_dir = os.path.join(test_dir, texture_name)
 
-    i = 0
-    for image_name in os.listdir(image_dir):
+    for i, image_name in enumerate(os.listdir(image_dir)):
         image = cv2.imread(os.path.join(image_dir, image_name))
+        w, h, _ = image.shape
+        if w != 150 or h != 150:
+            image = cv2.resize(image, (150, 150), interpolation=cv2.INTER_LINEAR)
         image_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)                    # 흑백 이미지로 변환
 
         glcm = greycomatrix(image_gray, distances=[DISTANCE], angles=[ANGLE], levels=256, symmetric=False, normed=True)
@@ -120,8 +122,7 @@ for idx, texture_name in enumerate(classes):
                             greycoprops(glcm, 'correlation')[0, 0]] + 
                             laws_texture(image_gray))
         Y_test.append(idx)
-        i += 1
-        print(f'1946/{(idx+1)*i}\r', end="")
+        print(f'1946/{(idx+1)*(i+1)}\r', end="")
 
 X_test = np.array(X_test)
 Y_test = np.array(Y_test)

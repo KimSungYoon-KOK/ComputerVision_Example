@@ -24,7 +24,7 @@ for idx, texture_name in enumerate(classes):
    image_dir = os.path.join(train_dir, texture_name)
    for image_name in os.listdir(image_dir):
        image = cv2.imread(os.path.join(image_dir, image_name))
-       image_s = cv2.resize(image, (32, 32), interpolation=cv2.INTER_LINEAR)
+       image_s = cv2.resize(image, (150, 150), interpolation=cv2.INTER_LINEAR)
        X_train.append(image_s)
        Y_train.append(idx)
 
@@ -41,7 +41,7 @@ for idx, texture_name in enumerate(classes):
     image_dir = os.path.join(test_dir, texture_name)
     for image_name in os.listdir(image_dir):
         image = cv2.imread(os.path.join(image_dir, image_name))
-        image_s = cv2.resize(image, (32, 32), interpolation=cv2.INTER_LINEAR)
+        image_s = cv2.resize(image, (150, 150), interpolation=cv2.INTER_LINEAR)
         X_test.append(image_s)
         Y_test.append(idx)
 
@@ -113,7 +113,7 @@ Testloader = DataLoader(Test_data, batch_size=batch_size)
 
 net = CNN()
 net.to(device)
-summary(net, (3, 32, 32), device='cuda' if torch.cuda.is_available() else 'cpu')
+summary(net, (3, 150, 150), device='cuda' if torch.cuda.is_available() else 'cpu')
 
 optimizer = optim.Adam(net.parameters(), lr=learning_rate)
 criterion = nn.CrossEntropyLoss()
